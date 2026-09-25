@@ -1,0 +1,4 @@
+# local run logs, if UPGRADE_LOG_DIR is ever pointed here
+logs/
+*.log
+.DS_Store
