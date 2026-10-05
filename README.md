@@ -43,3 +43,7 @@ end of each run.
 - Apple system updates (`softwareupdate -l` / `-ia`)
 - App Store updates (`mas upgrade`)
 - JetBrains updates (via JetBrains Toolbox)
+
+## License
+
+[MIT](LICENSE)
