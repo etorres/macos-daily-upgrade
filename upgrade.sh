@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 #
-# Daily macOS upgrade routine: Homebrew formulae, casks and mise-managed tools.
+# Daily macOS upgrade routine: Homebrew formulae, casks, App Store apps and
+# mise-managed tools.
 #
 # Usage:
 #   ./upgrade.sh              run every step
 #   ./upgrade.sh --dry-run    print what would run, change nothing
 #   ./upgrade.sh --skip-casks skip the (slow) greedy cask upgrade
+#   ./upgrade.sh --skip-mas   skip the App Store upgrade (needs sudo)
 #   ./upgrade.sh --quiet      only write to the log file, not the terminal
 #
 set -uo pipefail
 
 BREW=/opt/homebrew/bin/brew
 MISE=/opt/homebrew/bin/mise
+MAS=/opt/homebrew/bin/mas
 
 LOG_DIR="${UPGRADE_LOG_DIR:-$HOME/.local/state/upgrade}"
 LOG_FILE="$LOG_DIR/upgrade-$(date +%Y-%m-%d).log"
@@ -19,14 +22,16 @@ LOG_KEEP_DAYS=30
 
 DRY_RUN=0
 SKIP_CASKS=0
+SKIP_MAS=0
 QUIET=0
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run)    DRY_RUN=1 ;;
     --skip-casks) SKIP_CASKS=1 ;;
+    --skip-mas)   SKIP_MAS=1 ;;
     --quiet)      QUIET=1 ;;
-    -h|--help)    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)            echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -111,6 +116,17 @@ else
   # --greedy also upgrades casks that auto-update themselves; some casks prompt
   # for the admin password, so this step can block waiting on input.
   run "brew upgrade --cask --greedy" warn "$BREW" upgrade --cask --greedy
+fi
+
+if [[ $SKIP_MAS -eq 1 ]]; then
+  echo; echo "${BOLD}==> mas upgrade${RESET}"; echo "    skipped (--skip-mas)"
+elif [[ -x "$MAS" ]]; then
+  # mas needs root to update apps. Prompt for the password only when someone is
+  # at the terminal; unattended runs use sudo -n so they fail fast, not hang.
+  if [[ -t 0 ]]; then SUDO=(sudo); else SUDO=(sudo -n); fi
+  run "mas upgrade"          warn  "${SUDO[@]}" "$MAS" upgrade
+else
+  echo; echo "${YELLOW}==> mas not found at $MAS — skipped${RESET}"
 fi
 
 run "brew autoremove"        warn  "$BREW" autoremove
